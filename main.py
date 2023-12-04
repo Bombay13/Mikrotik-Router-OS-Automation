@@ -257,15 +257,15 @@ while True:
 
             elif event=="Remove firewall rule":
                     rule_number=popup_get_text("Enter firewall rule number")
-                    print(f"/ip firewall filter  remove {rule_number}")
+                    print(connection.send_command(f"ip firewall filter remove {rule_number}"))
             
             elif event=="Enable Firewall Rule":
                 rule_number =popup_get_text("Enter firewall rule number")
-                print(f"/ip firewall filter  enable {rule_number}")
+                print(connection.send_command(f"ip firewall filter enable {rule_number}"))
             
             elif event=="Disable Firewall Rule":
                 rule_number =popup_get_text("Enter firewall rule number")
-                print(f"/ip firewall filter disable {rule_number}")
+                print(connection.send_command(f"ip firewall filter disable {rule_number}"))
 
             elif event=="User statistics":
                 clean_output()
