@@ -4,16 +4,17 @@ from time import sleep
 import PySimpleGUI as sg
 from PySimpleGUI import Input, Text, Button, Window, Output, popup_get_text, WIN_CLOSED
 
-# def get_component
 
-# def navigate():
+
+
+#default credentials
 CREDS = {
     "device_type": "mikrotik_routeros",
     "ip": "192.168.56.2",
     "username": "admin",
     "password": "admin",
     "port": "22",
-} 
+}
 
 def get_page():
     column1=[
@@ -63,12 +64,13 @@ def get_page():
         [sg.Text("Enter Username"), sg.Input(CREDS['username'], key="_username_")],
         [sg.Text("Enter Password"), sg.Input(CREDS['password'], key="_password_")],
         [sg.Text("Enter Port"), sg.Input(CREDS['port'], key="_port_"), sg.Button("Connect")],
+         [sg.Text("Commands")],
         [
             sg.Column(column1, vertical_scroll_only=True),  # First column buttons
             sg.Column(column2, vertical_scroll_only=True),
             sg.Column(column3, vertical_scroll_only=True),
             sg.Column(column4, vertical_scroll_only=True),
-            sg.Column(column5, vertical_scroll_only=True)   # Second column buttons
+            sg.Column(column5, vertical_scroll_only=True)  
         ],
         [sg.Multiline(size=(50, 10), key="_output_", disabled=True, reroute_stdout=True)]
     ]
@@ -115,13 +117,12 @@ def clean_output():
 
 connection = None
 def connect():
-    for _ in range(3): #3 defe retry edir 
+    for _ in range(3): #3 times retry 
             try:
                 CREDS["ip"] = values["_ip_"]
                 CREDS["username"] = values["_username_"]
                 CREDS["password"] = values["_password_"]
                 CREDS["port"] = values["_port_"]
-                print("Connected")
                 return netmiko.ConnectHandler(**CREDS)
             except Exception as e:
                 popup('Login failed:  '+str(e)+'\nRetrying...')
@@ -139,6 +140,7 @@ while True:
         connection = connect()
     
     if connection is not None:
+        print("Connected")
         try:
             if event == "Show IP":
                 clean_output()
@@ -235,6 +237,7 @@ while True:
                     popup("Enter Indentity correctly")
                 else:
                     print(connection.send_command(f"system identity set name={text}", cmd_verify=False))
+                sleep(5)
             
             elif event=="Disconnect Internet":
                 print(connection.send_command('interface ethernet disable [find name!=ether2]'))
