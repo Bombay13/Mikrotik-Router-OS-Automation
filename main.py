@@ -17,6 +17,7 @@ CREDS = {
 }
 
 def get_page():
+    
     column1=[
         [sg.Button("Show IP")],
         [sg.Button("Change IP")],
@@ -55,9 +56,11 @@ def get_page():
 
     column5=[
         [sg.Button("Disable Firewall Rule")],
-        [sg.Button("Interface Status")]
-        
+        [sg.Button("Interface Status")],
+        [sg.Button("Toggle safe mode")], 
+        [sg.Button("Undo safe mode changes")], 
     ]
+
     layout=[
          [sg.Text("Connect to Mikrotik")],
         [sg.Text("Enter IP"), sg.Input(CREDS['ip'], key="_ip_")],
@@ -74,7 +77,7 @@ def get_page():
         ],
         [sg.Multiline(size=(50, 10), key="_output_", disabled=True, reroute_stdout=True)]
     ]
-    return sg.Window("Main page", layout)
+    return sg.Window("Main page", layout, finalize=True)
     # return Window("Main page", [[
     #     [Text("Connect to Mikrotik")],
     #     [Text("Enter Ip"), Input(CREDS['ip'], key="_ip_")],
@@ -114,6 +117,34 @@ page = get_page()
 
 def clean_output():
     page["_output_"].update('')
+
+
+theme1 = 'DarkBlue3'
+theme2 = 'DarkGreen'
+
+is_safe = False
+
+def click_safe_mode():
+    global is_safe
+    if not is_safe: 
+        sg.popup('Entering safe mode...')
+        sg.theme(theme2)
+    else: 
+        sg.popup('Exiting safe mode...')
+        sg.theme(theme1)
+    is_safe = not is_safe
+    connection.send_str(ascii.ctrl('x'))
+
+def click_undo_changes_in_safe_mode():
+    global is_safe
+    if is_safe:
+        sg.popup('Undoing changes...')
+        connection.send_str(ascii.ctrl('d'))
+    else:
+        sg.popup("Not safe mode")
+    is_safe = False
+    connection.disconnect()
+    sg.theme(theme1)
 
 connection = None
 def connect():
@@ -285,6 +316,14 @@ while True:
             elif event=="Show firewall rules":
                 clean_output()
                 print(connection.send_command('ip firewall filter print', cmd_verify=False))
+            
+            elif event=="Toggle safe mode":
+                clean_output()
+                click_safe_mode()
+
+            elif event == "Undo safe mode changes":
+                clean_output()
+                click_undo_changes_in_safe_mode()
             
           
 
