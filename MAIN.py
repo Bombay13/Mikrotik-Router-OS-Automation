@@ -3,13 +3,16 @@ from PySimpleGUI import popup
 from time import sleep
 import PySimpleGUI as sg
 from PySimpleGUI import Input, Text, Button, Window, Output, popup_get_text, WIN_CLOSED
-from curses import ascii
+
+
+
+
 #default credentials
 CREDS = {
     "device_type": "mikrotik_routeros",
     "ip": "192.168.56.2",
     "username": "admin",
-    "password": "123",
+    "password": "admin",
     "port": "22",
 }
 
@@ -54,8 +57,8 @@ def get_page():
     column5=[
         [sg.Button("Disable Firewall Rule")],
         [sg.Button("Interface Status")],
-        [sg.Button("Safe mode configuration")], 
-        #[sg.Button("Undo safe mode changes")], 
+        [sg.Button("Toggle safe mode")], 
+        [sg.Button("Undo safe mode changes")], 
     ]
 
     layout=[
@@ -110,7 +113,6 @@ def get_page():
     #     [Button("Change service port")]+
     # ], [Output(size=(50, 10), key="_output_")]],size=(800, 600))
 
-
 page = get_page()
 
 def clean_output():
@@ -121,39 +123,30 @@ theme1 = 'DarkBlue3'
 theme2 = 'DarkGreen'
 
 is_safe = False
-connection = None
 
-
-Output=""
 def click_safe_mode():
     global is_safe
-    global Output
     if not is_safe: 
         sg.popup('Entering safe mode...')
-        #sg.theme(theme2)
+        sg.theme(theme2)
     else: 
         sg.popup('Exiting safe mode...')
-        #sg.theme(theme1)
-        # connection.write_channel(ascii.ctrl('x'))
-
-       
+        sg.theme(theme1)
     is_safe = not is_safe
-    print(f'Is safe mode? {is_safe}')
-    connection.write_channel(ascii.ctrl('x'))
-    #connection.send_command('\x18')
-    Output=connection.read_channel()
+    connection.send_str(ascii.ctrl('x'))
 
 def click_undo_changes_in_safe_mode():
     global is_safe
-    print(is_safe)
     if is_safe:
         sg.popup('Undoing changes...')
-        connection.write_channel(ascii.ctrl('d'))
+        connection.send_str(ascii.ctrl('d'))
     else:
         sg.popup("Not safe mode")
     is_safe = False
-    #sg.theme(theme1)
+    connection.disconnect()
+    sg.theme(theme1)
 
+connection = None
 def connect():
     for _ in range(3): #3 times retry 
             try:
@@ -190,7 +183,7 @@ while True:
 
                 if text and (interface.lower() in ['ether1', 'ether2', 'ether3']):
                     page['_ip_'].update(text)
-                    print(connection.send_command(f"ip address set [find interface={interface.lower()}] address={text}", cmd_verify=False)) 
+                    print(connection.send_command(f"ip address set [find interface={interface}] address={text}", cmd_verify=False)) 
                 elif not text and not (interface in ['ether1', 'ether2', 'ether3']):
                     print('enter everything correctly')
                 elif not text:
@@ -203,9 +196,9 @@ while True:
                 text = (popup_get_text("Enter IP"))
                 interface = popup_get_text("Enter interface")
 
-                if text and (interface.lower() in ['ether1', 'ether2', 'ether3']):
+                if text and (interface in ['ether1', 'ether2', 'ether3']):
                     page['_ip_'].update(text)
-                    print(connection.send_command(f"ip address add address={text} interface={interface.lower()}", cmd_verify=False))
+                    print(connection.send_command(f"ip address add address={text} interface={interface}", cmd_verify=False))
                 elif not text and not (interface in ['ether1', 'ether2', 'ether3']):
                     print('enter everything correctly')
                 elif not text:
@@ -218,7 +211,7 @@ while True:
 
                 if (interface.lower() in ['ether1', 'ether2', 'ether3']):
                     clean_output()
-                    print(connection.send_command(f"ip address remove [find interface={interface.lower()}]", cmd_verify=False)) 
+                    print(connection.send_command(f"ip address remove [find interface={interface}]", cmd_verify=False)) 
                 else:
                     clean_output()
                     print('enter interface correctly')
@@ -238,22 +231,22 @@ while True:
                 service= popup_get_text("Enter service name(ssh or ftp):")
                 if service.lower() in service_list:
                     port = popup_get_text("Enter port number:")
-                    print(connection.send_command(f"/ip service set [find name={service.lower()}] port={port}"),cmd_verify=False)
+                    print(connection.send_command(f"/ip service set [find name={service}] port={port}"))
                 else:
                     print("Enter correct service name")
             elif event=="Add new user":
                 clean_output()
                 name = (popup_get_text("Enter new username"))
                 password = popup_get_text("Enter new password")
-                print(connection.send_command(f'user add name={name} password={password} group=full'),cmd_verify=False)
+                print(connection.send_command(f'user add name={name} password={password} group=full'))
             
             elif event=="Remove user":
                 name = (popup_get_text("Enter the username"))
-                print(connection.send_command(f'user remove {name}'),cmd_verify=False)
+                print(connection.send_command(f'user remove {name}'))
             
             elif event=="Create backup file":
                 name = (popup_get_text("Enter the backup file name:"))
-                print(connection.send_command(f'system backup save name={name}'),cmd_verify=False)
+                print(connection.send_command(f'system backup save name={name}'))
 
                 
             elif event == "Show services and ports":
@@ -278,35 +271,35 @@ while True:
                 sleep(5)
             
             elif event=="Disconnect Internet":
-                print(connection.send_command('interface ethernet disable [find name!=ether2]'),cmd_verify=False)
+                print(connection.send_command('interface ethernet disable [find name!=ether2]'))
 
             elif event=="Connect Internet":
-                print(connection.send_command('interface ethernet enable [find name!=ether2]'),cmd_verify=False)    
+                print(connection.send_command('interface ethernet enable [find name!=ether2]'))    
             
             elif event=="Add new firewall rules":
                  chains=['forward','input','output']
                  chain=popup_get_text("Enter chain:(forward,input or output)")
-                 if chain.lower() in chains:
+                 if chain in chains:
                       actions=['accept','drop']
                       action=popup_get_text("Enter action(accept or drop):")
-                      if action.lower() not in actions:
+                      if action not in actions:
                           print("Enter correcr action type")
                       else:
-                          print(connection.send_command(f'ip firewall filter add chain={chain.lower()} action={action.lower()}'),cmd_verify=False)
+                          print(connection.send_command(f'ip firewall filter add chain={chain} action={action}'))
                  else:
                      print("Enter correct chain type")
 
             elif event=="Remove firewall rule":
                     rule_number=popup_get_text("Enter firewall rule number")
-                    print(connection.send_command(f"ip firewall filter remove {rule_number}"),cmd_verify=False)
+                    print(connection.send_command(f"ip firewall filter remove {rule_number}"))
             
             elif event=="Enable Firewall Rule":
                 rule_number =popup_get_text("Enter firewall rule number")
-                print(connection.send_command(f"ip firewall filter enable {rule_number}"),cmd_verify=False)
+                print(connection.send_command(f"ip firewall filter enable {rule_number}"))
             
             elif event=="Disable Firewall Rule":
                 rule_number =popup_get_text("Enter firewall rule number")
-                print(connection.send_command(f"ip firewall filter disable {rule_number}"),cmd_verify=False)
+                print(connection.send_command(f"ip firewall filter disable {rule_number}"))
 
             elif event=="User statistics":
                 clean_output()
@@ -324,10 +317,9 @@ while True:
                 clean_output()
                 print(connection.send_command('ip firewall filter print', cmd_verify=False))
             
-            elif event=="Safe mode configuration":
+            elif event=="Toggle safe mode":
                 clean_output()
                 click_safe_mode()
-                print(Output)
 
             elif event == "Undo safe mode changes":
                 clean_output()
@@ -337,9 +329,8 @@ while True:
 
 
         except Exception as e:
-            print(e)
             popup("Reopen App")
-            # page.close()
-            # connection = None
-            # page = get_page()
+            page.close()
+            connection = None
+            page = get_page()
   
